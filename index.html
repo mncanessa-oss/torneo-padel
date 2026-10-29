@@ -163,6 +163,7 @@ select { border:1px solid var(--border); background:var(--surface); color:var(--
   ];
   let matches = defaultMatches.map(m=>({...m,teams:m.teams.map(t=>[...t]),sides:m.sides.map(s=>[...s])}));
   const fixtureKey = 'torneo-padel-fixture-v1';
+  const fixtureLockKey = 'torneo-padel-fixture-locked-v1';
   const storageKey = 'torneo-padel-amigos-v1';
   const supabaseUrl = 'https://azmudfhslumnynhqbooh.supabase.co';
   const supabaseKey = 'sb_publishable_YDsGEqnTQ44ntd7kzDpGIg_v63hZmDZ';
@@ -170,6 +171,7 @@ select { border:1px solid var(--border); background:var(--surface); color:var(--
   let isAdmin = false;
   let scores = {};
   let scoreDraftDirty = false;
+  let fixtureLocked = localStorage.getItem(fixtureLockKey) === 'true';
   try { scores = JSON.parse(localStorage.getItem(storageKey) || '{}') || {}; } catch(e) { scores = {}; }
   try {
     const savedFixture = JSON.parse(localStorage.getItem(fixtureKey) || 'null');
@@ -180,11 +182,12 @@ select { border:1px solid var(--border); background:var(--surface); color:var(--
   let saveTimer = null;
   async function save() {
     try { localStorage.setItem(storageKey, JSON.stringify(scores)); localStorage.setItem(fixtureKey, JSON.stringify(matches)); } catch(e) {}
+    try { localStorage.setItem(fixtureLockKey, String(fixtureLocked)); } catch(e) {}
     if (!isAdmin) return;
     scoreDraftDirty = true;
     clearTimeout(saveTimer);
     saveTimer = setTimeout(async () => {
-      const snapshot = { matches: JSON.parse(JSON.stringify(matches)), scores: JSON.parse(JSON.stringify(scores)) };
+      const snapshot = { matches: JSON.parse(JSON.stringify(matches)), scores: JSON.parse(JSON.stringify(scores)), fixtureLocked };
       const { error } = await db.from('tournament_state').update({state:snapshot,updated_at:new Date().toISOString()}).eq('id',1);
       if (!error) scoreDraftDirty = false;
       $('#admin-message').textContent = error ? 'No se pudo sincronizar: '+error.message : 'Resultados guardados y sincronizados.';
@@ -196,7 +199,8 @@ select { border:1px solid var(--border); background:var(--surface); color:var(--
     if(error) throw error;
     if(data.state && Array.isArray(data.state.matches) && data.state.matches.length===6) matches=data.state.matches;
     scores=data.state && data.state.scores && typeof data.state.scores==='object' ? data.state.scores : {};
-    try { localStorage.setItem(storageKey,JSON.stringify(scores)); localStorage.setItem(fixtureKey,JSON.stringify(matches)); } catch(e) {}
+    fixtureLocked = data.state && typeof data.state.fixtureLocked === 'boolean' ? data.state.fixtureLocked : (fixtureLocked || Object.keys(scores).some(id=>inspect(scores[id]).valid));
+    try { localStorage.setItem(storageKey,JSON.stringify(scores)); localStorage.setItem(fixtureKey,JSON.stringify(matches)); localStorage.setItem(fixtureLockKey,String(fixtureLocked)); } catch(e) {}
     renderAll();
     $('#fixture-message').textContent='Resultados sincronizados · '+new Date(data.updated_at).toLocaleString('es-AR');
   }
@@ -214,8 +218,17 @@ select { border:1px solid var(--border); background:var(--surface); color:var(--
   }
   function randomizeFixture() {
     if(!isAdmin) { $('#fixture-message').textContent='Ingresá como administrador para sortear el fixture.'; return; }
-    if(Object.keys(scores).some(id=>inspect(scores[id]).valid)) {
-      $('#fixture-message').textContent='Ya hay resultados cargados. Borrá los marcadores antes de sortear otro fixture.';
+    const complete=matches.filter(m=>inspect(scores[m.id]).valid).length;
+    if(fixtureLocked && complete<6) {
+      $('#fixture-message').textContent=`El fixture ya está sorteado y bloqueado. Podrás iniciar otro torneo cuando finalicen los 6 partidos (${complete}/6).`;
+      return;
+    }
+    if(fixtureLocked && complete===6) {
+      if(!confirm('El torneo terminó. ¿Querés iniciar un torneo nuevo? Se borrarán los 6 resultados anteriores y se sorteará un nuevo fixture.')) return;
+      scores={};
+      fixtureLocked=false;
+    } else if(Object.keys(scores).some(id=>inspect(scores[id]).valid)) {
+      $('#fixture-message').textContent='Ya hay resultados cargados. No se puede sortear otro fixture.';
       return;
     }
     const pairs=[[[0,1],[2,3]],[[0,2],[1,3]],[[0,3],[1,2]]];
@@ -229,8 +242,9 @@ select { border:1px solid var(--border); background:var(--surface); color:var(--
       matches.push({id:index*2+1,teams,sides});
       matches.push({id:index*2+2,teams:teams.map(t=>[...t]),sides:sides.map(s=>s[0]==='DRIVE'?['REVÉS','DRIVE']:['DRIVE','REVÉS'])});
     });
+    fixtureLocked=true;
     save();
-    $('#fixture-message').textContent='¡Fixture sorteado! Cada pareja aparece dos veces y cambia drive/revés en la revancha.';
+    $('#fixture-message').textContent='¡Fixture sorteado y bloqueado! No se podrá volver a sortear hasta finalizar los 6 partidos.';
     renderAll();
   }
   function validSet(a,b) {
@@ -311,6 +325,10 @@ select { border:1px solid var(--border); background:var(--surface); color:var(--
   }
   function renderStats() {
     const complete=matches.filter(m=>inspect(scores[m.id]).valid).length;
+    const randomizeButton=$('#randomize-btn');
+    randomizeButton.disabled=fixtureLocked && complete<6;
+    randomizeButton.textContent=fixtureLocked && complete<6?'🔒 Fixture bloqueado':(fixtureLocked && complete===6?'🏁 Iniciar nuevo torneo':'🎲 Sortear fixture');
+    randomizeButton.title=fixtureLocked && complete<6?`Bloqueado hasta finalizar los 6 partidos (${complete}/6)`:'';
     const setCount=matches.reduce((sum,m)=>sum+(inspect(scores[m.id]).valid?scores[m.id].sets.length:0),0);
     const stats=calcStats(); const maxWins=Math.max(...stats.map(s=>s.wins));
     $('#played-count').textContent=`${complete}/6`; $('#sets-count').textContent=String(setCount);
@@ -331,7 +349,7 @@ select { border:1px solid var(--border); background:var(--surface); color:var(--
     await checkAdmin();
   });
   $('#admin-logout').addEventListener('click',async()=>{await db.auth.signOut();isAdmin=false;applyAccess();renderAll();$('#admin-message').textContent='Sesión cerrada.';});
-  $('#randomize-btn').addEventListener('click',()=>{if(confirm('¿Sortear un nuevo fixture aleatorio? Esta acción solo está disponible antes de cargar resultados.'))randomizeFixture();});
+  $('#randomize-btn').addEventListener('click',()=>{if(!fixtureLocked && confirm('¿Sortear el fixture de este torneo? Una vez sorteado, quedará bloqueado hasta que finalicen los 6 partidos.'))randomizeFixture();else if(fixtureLocked)randomizeFixture();});
   $('#reset-btn').addEventListener('click',()=>{if(!isAdmin)return;if(confirm('¿Borrar todos los marcadores guardados en este navegador?')){scores={};save();renderAll();}});
   $('#export-btn').addEventListener('click',()=>{
     const payload={torneo:'Torneo de Pádel entre amigos',jugadores:players,partidos:matches.map(m=>({partido:m.id,pareja1:m.teams[0].map(i=>players[i]),pareja2:m.teams[1].map(i=>players[i]),resultado:scores[m.id]||null})),estadisticas:calcStats()};
