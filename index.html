@@ -100,7 +100,15 @@ select { border:1px solid var(--border); background:var(--surface); color:var(--
 .admin-panel { display:none; background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:16px; margin-bottom:16px; }
 .admin-panel.open { display:block; }
 .admin-panel input { width:100%; max-width:340px; border:1px solid var(--border); background:var(--surface); color:var(--text); padding:11px 12px; border-radius:9px; margin:6px 0 10px; }
-.readonly .editor, .readonly #randomize-btn, .readonly #reset-btn, .readonly #restart-tournament-btn { display:none !important; }
+.readonly .editor, .readonly .admin-only { display:none !important; }
+.tournament-finalized .editor { display:none !important; }
+.modal-backdrop { position:fixed; inset:0; z-index:1000; display:none; align-items:center; justify-content:center; padding:18px; background:rgba(0,0,0,.58); }
+.modal-backdrop.open { display:flex; }
+.modal { width:min(760px,100%); max-height:85vh; overflow:auto; background:var(--surface); color:var(--text); border:1px solid var(--border); border-radius:18px; padding:18px; box-shadow:0 20px 70px rgba(0,0,0,.28); }
+.modal-head { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:12px; }
+.modal table { min-width:580px; }
+.finalized-note { display:none; color:var(--good); font-weight:800; font-size:12px; }
+.tournament-finalized .finalized-note { display:block; }
 @media (max-width:700px) { .hero { padding:24px 18px; } h1 {font-size:30px;} .stats {gap:8px;} .stat {padding:12px;} .stat .num {font-size:24px;} .match-grid, .rules-grid {grid-template-columns:1fr;} .section-head {align-items:start; flex-direction:column;} }
 @media (prefers-color-scheme: dark) { .status.done {background:#164b37;color:#b9f3d5;} }
 </style>
@@ -123,8 +131,8 @@ select { border:1px solid var(--border); background:var(--surface); color:var(--
     <div class="admin-panel" id="admin-panel"><strong>Acceso del organizador</strong><p class="sub">Iniciá sesión con el usuario administrador creado en Supabase.</p><label for="admin-email" class="sub">Correo electrónico</label><br><input type="email" id="admin-email" autocomplete="username" placeholder="Tu correo"><br><label for="admin-password" class="sub">Contraseña</label><br><input type="password" id="admin-password" autocomplete="current-password" placeholder="Tu contraseña"><div class="form-actions"><button class="primary-btn" id="admin-login">Ingresar</button><button class="small-btn" id="admin-logout">Cerrar sesión</button></div><div id="admin-message" class="message" role="status"></div><p class="footnote">Los permisos se verifican en Supabase. La contraseña no se guarda en el código de la página.</p></div>
     <nav class="tabs" aria-label="Secciones"><button class="tab active" data-tab="fixture">Fixture y marcador</button><button class="tab" data-tab="tabla">Estadísticas</button><button class="tab" data-tab="reglas">Reglamento</button></nav>
     <section id="fixture" class="panel active">
-      <div class="section-head"><div><h2>Fixture del torneo</h2><div class="sub">Cargá el resultado de cada partido. Los cambios se guardan en este navegador.</div></div><div class="controls"><button class="secondary-btn" id="randomize-btn">🎲 Sortear fixture</button><button class="danger-btn" id="restart-tournament-btn">↻ Reiniciar torneo</button><button class="secondary-btn" id="export-btn">Exportar resultados</button></div></div>
-      <div id="fixture-message" class="footnote" role="status" aria-live="polite"></div>
+      <div class="section-head"><div><h2>Fixture del torneo</h2><div class="sub">Cargá el resultado de cada partido. Los cambios se guardan en este navegador.</div></div><div class="controls"><button class="secondary-btn admin-only" id="randomize-btn">🎲 Sortear fixture</button><button class="primary-btn admin-only" id="finalize-tournament-btn">🏁 Finalizar torneo</button><button class="danger-btn admin-only" id="restart-tournament-btn">↻ Reiniciar torneo</button><button class="secondary-btn" id="ranking-btn">🏆 Ver ranking</button><button class="secondary-btn" id="export-btn">Exportar resultados</button></div></div>
+      <div id="fixture-message" class="footnote" role="status" aria-live="polite"></div><div class="finalized-note">🏁 Torneo finalizado. Para comenzar otro, el administrador debe reiniciarlo.</div>
       <div id="matches" class="match-grid"></div>
       <p class="footnote">Las parejas se repiten una segunda vez con las posiciones de drive y revés intercambiadas. En el set, el tie-break se registra como 7–6; sus puntos no se suman a los games.</p>
     </section>
@@ -143,11 +151,12 @@ select { border:1px solid var(--border); background:var(--surface); color:var(--
         <div class="rule"><strong>05 · Estadísticas</strong><p>Partidos jugados, ganados y perdidos; sets a favor y en contra, diferencia de sets; games a favor y en contra, diferencia de games.</p></div>
         <div class="rule"><strong>06 · Guardado local</strong><p>Los resultados se guardan automáticamente en este navegador. Para compartirlos entre celulares hará falta conectar una base de datos o publicar una versión con sincronización.</p></div>
       </div>
-      <div class="form-actions"><button class="danger-btn" id="reset-btn">Borrar todos los resultados</button></div>
+      <div class="form-actions"><button class="danger-btn admin-only" id="reset-btn">Borrar todos los resultados</button></div>
       <p class="footnote">Borrar resultados elimina los marcadores guardados en este navegador. Esta acción pide confirmación.</p>
     </section>
   </main>
 </div>
+<div class="modal-backdrop" id="ranking-modal" role="dialog" aria-modal="true" aria-labelledby="ranking-title"><div class="modal"><div class="modal-head"><div><h2 id="ranking-title">🏆 Ranking del torneo</h2><div class="sub">Orden: partidos ganados, diferencia de sets y diferencia de games.</div></div><button class="small-btn" id="ranking-close">Cerrar</button></div><div class="table-wrap"><table><thead><tr><th>Pos.</th><th>Jugador</th><th>PG</th><th>Dif. sets</th><th>Dif. games</th></tr></thead><tbody id="ranking-rows"></tbody></table></div><p class="footnote">El ranking se actualiza automáticamente al guardar cada resultado. Si hay igualdad en los tres criterios, los jugadores comparten posición.</p></div></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 (() => {
@@ -169,6 +178,7 @@ select { border:1px solid var(--border); background:var(--surface); color:var(--
   const supabaseKey = 'sb_publishable_YDsGEqnTQ44ntd7kzDpGIg_v63hZmDZ';
   const db = window.supabase.createClient(supabaseUrl, supabaseKey);
   let isAdmin = false;
+  let tournamentFinalized = false;
   let scores = {};
   let scoreDraftDirty = false;
   let fixtureLocked = localStorage.getItem(fixtureLockKey) === 'true';
@@ -187,7 +197,7 @@ select { border:1px solid var(--border); background:var(--surface); color:var(--
     scoreDraftDirty = true;
     clearTimeout(saveTimer);
     saveTimer = setTimeout(async () => {
-      const snapshot = { matches: JSON.parse(JSON.stringify(matches)), scores: JSON.parse(JSON.stringify(scores)), fixtureLocked };
+      const snapshot = { matches: JSON.parse(JSON.stringify(matches)), scores: JSON.parse(JSON.stringify(scores)), fixtureLocked, tournamentFinalized };
       const { error } = await db.from('tournament_state').update({state:snapshot,updated_at:new Date().toISOString()}).eq('id',1);
       if (!error) scoreDraftDirty = false;
       $('#admin-message').textContent = error ? 'No se pudo sincronizar: '+error.message : 'Resultados guardados y sincronizados.';
@@ -200,12 +210,14 @@ select { border:1px solid var(--border); background:var(--surface); color:var(--
     if(data.state && Array.isArray(data.state.matches) && data.state.matches.length===6) matches=data.state.matches;
     scores=data.state && data.state.scores && typeof data.state.scores==='object' ? data.state.scores : {};
     fixtureLocked = data.state && typeof data.state.fixtureLocked === 'boolean' ? data.state.fixtureLocked : (fixtureLocked || Object.keys(scores).some(id=>inspect(scores[id]).valid));
+    tournamentFinalized = !!(data.state && data.state.tournamentFinalized);
     try { localStorage.setItem(storageKey,JSON.stringify(scores)); localStorage.setItem(fixtureKey,JSON.stringify(matches)); localStorage.setItem(fixtureLockKey,String(fixtureLocked)); } catch(e) {}
     renderAll();
     $('#fixture-message').textContent='Resultados sincronizados · '+new Date(data.updated_at).toLocaleString('es-AR');
   }
   function applyAccess() {
     document.body.classList.toggle('readonly',!isAdmin);
+    document.body.classList.toggle('tournament-finalized',tournamentFinalized);
     $('#access-status').textContent=isAdmin?'🔓 Administrador':'🔒 Solo lectura';
     $('#admin-toggle').textContent=isAdmin?'Administración abierta':'Ingresar como administrador';
     $('#access-message').textContent=isAdmin?'Sesión autorizada: podés modificar resultados y fixture.':'Modo consulta: solo el administrador puede cambiar fixture y resultados.';
@@ -218,6 +230,7 @@ select { border:1px solid var(--border); background:var(--surface); color:var(--
   }
   function randomizeFixture() {
     if(!isAdmin) { $('#fixture-message').textContent='Ingresá como administrador para sortear el fixture.'; return; }
+    if(tournamentFinalized) { $('#fixture-message').textContent='El torneo está finalizado. Reinicialo para generar un nuevo fixture.'; return; }
     const complete=matches.filter(m=>inspect(scores[m.id]).valid).length;
     if(fixtureLocked && complete<6) {
       $('#fixture-message').textContent=`El fixture ya está sorteado y bloqueado. Podrás iniciar otro torneo cuando finalicen los 6 partidos (${complete}/6).`;
@@ -287,7 +300,7 @@ select { border:1px solid var(--border); background:var(--surface); color:var(--
     document.querySelectorAll('[data-clear]').forEach(b=>b.addEventListener('click',()=>{if(!isAdmin)return;scoreDraftDirty=false;delete scores[b.dataset.clear];save();renderAll();}));
   }
   function saveMatch(id) {
-    if(!isAdmin) return;
+    if(!isAdmin || tournamentFinalized) return;
     const sets=[];
     for(let i=0;i<3;i++) {
       const a=$(`#m${id}s${i}a`).value.trim(), b=$(`#m${id}s${i}b`).value.trim();
@@ -318,13 +331,19 @@ select { border:1px solid var(--border); background:var(--surface); color:var(--
     return Object.values(out);
   }
   function renderStandings() {
-    const key=$('#sort-by').value; const tie=['setDiff','gameDiff','wins','setsFor','gamesFor'];
-    const keys=[key,...tie.filter(k=>k!==key)];
+    const keys=['wins','setDiff','gameDiff','setsFor','gamesFor'];
     const rows=calcStats().sort((a,b)=>{for(const k of keys){if(a[k]!==b[k])return b[k]-a[k];}return a.player.localeCompare(b.player,'es');});
     $('#standings').innerHTML=rows.map((s,i)=>`<tr><td><span class="rank">${i+1}</span><strong>${esc(s.player)}</strong></td><td>${s.played}</td><td>${s.wins}</td><td>${s.losses}</td><td>${s.setsFor}</td><td>${s.setsAgainst}</td><td class="${s.setDiff>0?'positive':s.setDiff<0?'negative':''}">${s.setDiff>0?'+':''}${s.setDiff}</td><td>${s.gamesFor}</td><td>${s.gamesAgainst}</td><td class="${s.gameDiff>0?'positive':s.gameDiff<0?'negative':''}">${s.gameDiff>0?'+':''}${s.gameDiff}</td></tr>`).join('');
+    const rankingRows=calcStats().sort((a,b)=>b.wins-a.wins || b.setDiff-a.setDiff || b.gameDiff-a.gameDiff || a.player.localeCompare(b.player,'es'));
+    let previous=null,rank=0;
+    $('#ranking-rows').innerHTML=rankingRows.map((s,i)=>{const signature=[s.wins,s.setDiff,s.gameDiff].join('|');if(signature!==previous)rank=i+1;previous=signature;return `<tr><td><span class="rank">${rank}</span></td><td><strong>${esc(s.player)}</strong></td><td>${s.wins}</td><td class="${s.setDiff>0?'positive':s.setDiff<0?'negative':''}">${s.setDiff>0?'+':''}${s.setDiff}</td><td class="${s.gameDiff>0?'positive':s.gameDiff<0?'negative':''}">${s.gameDiff>0?'+':''}${s.gameDiff}</td></tr>`}).join('');
   }
   function renderStats() {
     const complete=matches.filter(m=>inspect(scores[m.id]).valid).length;
+    const finalizeButton=$('#finalize-tournament-btn');
+    finalizeButton.disabled=tournamentFinalized || complete!==6;
+    finalizeButton.textContent=tournamentFinalized?'✓ Torneo finalizado':(complete===6?'🏁 Finalizar torneo':'🏁 Finalizar torneo ('+complete+'/6)');
+    finalizeButton.title=complete!==6 && !tournamentFinalized?'Para finalizar, primero deben estar cargados los 6 partidos válidos.':'';
     const randomizeButton=$('#randomize-btn');
     randomizeButton.disabled=fixtureLocked && complete<6;
     randomizeButton.textContent=fixtureLocked && complete<6?'🔒 Fixture bloqueado':(fixtureLocked && complete===6?'🏁 Iniciar nuevo torneo':'🎲 Sortear fixture');
@@ -350,8 +369,12 @@ select { border:1px solid var(--border); background:var(--surface); color:var(--
   });
   $('#admin-logout').addEventListener('click',async()=>{await db.auth.signOut();isAdmin=false;applyAccess();renderAll();$('#admin-message').textContent='Sesión cerrada.';});
   $('#randomize-btn').addEventListener('click',()=>{if(!fixtureLocked && confirm('¿Sortear el fixture de este torneo? Una vez sorteado, quedará bloqueado hasta que finalicen los 6 partidos.'))randomizeFixture();else if(fixtureLocked)randomizeFixture();});
-  $('#reset-btn').addEventListener('click',()=>{if(!isAdmin)return;if(confirm('¿Borrar todos los marcadores guardados en este navegador?')){scores={};save();renderAll();}});
-  $('#restart-tournament-btn').addEventListener('click',()=>{if(!isAdmin)return;if(!confirm('¿Reiniciar el torneo completo? Se borrarán todos los resultados y se restaurará el fixture original.'))return;scores={};matches=defaultMatches.map(m=>({...m,teams:m.teams.map(t=>[...t]),sides:m.sides.map(s=>[...s])}));fixtureLocked=false;scoreDraftDirty=false;save();renderAll();$('#fixture-message').textContent='Torneo reiniciado. Ya podés sortear un nuevo fixture.';});
+  $('#reset-btn').addEventListener('click',()=>{if(!isAdmin || tournamentFinalized)return;if(confirm('¿Borrar todos los marcadores guardados en este navegador?')){scores={};save();renderAll();}});
+  $('#finalize-tournament-btn').addEventListener('click',()=>{if(!isAdmin || tournamentFinalized)return;const complete=matches.filter(m=>inspect(scores[m.id]).valid).length;if(complete!==6){$('#fixture-message').textContent='Para finalizar el torneo deben estar completos los 6 partidos ('+complete+'/6).';return;}if(!confirm('¿Finalizar el torneo? El ranking quedará disponible y no se podrán editar los resultados hasta reiniciar.'))return;tournamentFinalized=true;fixtureLocked=true;save();applyAccess();renderAll();$('#fixture-message').textContent='Torneo finalizado. ¡Felicitaciones!';});
+  $('#restart-tournament-btn').addEventListener('click',()=>{if(!isAdmin)return;if(!confirm('¿Reiniciar el torneo completo? Se borrarán todos los resultados, se restaurará el fixture original y se quitará el estado de finalizado.'))return;scores={};matches=defaultMatches.map(m=>({...m,teams:m.teams.map(t=>[...t]),sides:m.sides.map(s=>[...s])}));fixtureLocked=false;tournamentFinalized=false;scoreDraftDirty=false;save();applyAccess();renderAll();$('#fixture-message').textContent='Torneo reiniciado. Ya podés sortear un nuevo fixture.';});
+  $('#ranking-btn').addEventListener('click',()=>$('#ranking-modal').classList.add('open'));
+  $('#ranking-close').addEventListener('click',()=>$('#ranking-modal').classList.remove('open'));
+  $('#ranking-modal').addEventListener('click',e=>{if(e.target.id==='ranking-modal')$('#ranking-modal').classList.remove('open');});
   $('#export-btn').addEventListener('click',()=>{
     const payload={torneo:'Torneo de Pádel entre amigos',jugadores:players,partidos:matches.map(m=>({partido:m.id,pareja1:m.teams[0].map(i=>players[i]),pareja2:m.teams[1].map(i=>players[i]),resultado:scores[m.id]||null})),estadisticas:calcStats()};
     const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='resultados-torneo-padel.json';a.click();URL.revokeObjectURL(url);
