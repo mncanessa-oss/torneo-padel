@@ -169,6 +169,7 @@ select { border:1px solid var(--border); background:var(--surface); color:var(--
   const db = window.supabase.createClient(supabaseUrl, supabaseKey);
   let isAdmin = false;
   let scores = {};
+  let scoreDraftDirty = false;
   try { scores = JSON.parse(localStorage.getItem(storageKey) || '{}') || {}; } catch(e) { scores = {}; }
   try {
     const savedFixture = JSON.parse(localStorage.getItem(fixtureKey) || 'null');
@@ -187,6 +188,7 @@ select { border:1px solid var(--border); background:var(--surface); color:var(--
     },250);
   }
   async function loadCloudState() {
+    if (isAdmin && scoreDraftDirty) return;
     const {data,error}=await db.from('tournament_state').select('state,updated_at').eq('id',1).single();
     if(error) throw error;
     if(data.state && Array.isArray(data.state.matches) && data.state.matches.length===6) matches=data.state.matches;
@@ -263,8 +265,9 @@ select { border:1px solid var(--border); background:var(--surface); color:var(--
       const rows=[0,1,2].map(i=>`<div class="set-row"><label for="m${m.id}s${i}a">Set ${i+1}${i===2?' · si hace falta':''}</label><input class="score-input" id="m${m.id}s${i}a" type="number" min="0" max="7" inputmode="numeric" value="${sets[i]?.[0] ?? ''}" aria-label="Set ${i+1}, games pareja 1"><span>–</span><input class="score-input" id="m${m.id}s${i}b" type="number" min="0" max="7" inputmode="numeric" value="${sets[i]?.[1] ?? ''}" aria-label="Set ${i+1}, games pareja 2"></div>`).join('');
       return `<article class="match" id="match-${m.id}"><div class="match-top"><span class="match-num">Partido ${m.id}</span><span class="status ${state.valid?'done':''}">${state.valid?'Finalizado':'Pendiente'}</span></div><div class="teams"><div class="team">${teamNames(m,0)}</div><div class="vs">VS</div><div class="team">${teamNames(m,1)}</div></div>${result}<div class="editor"><div class="sub">Games por set · el tie-break se anota 7–6</div>${rows}<div class="form-actions"><button class="primary-btn" data-save="${m.id}">Guardar marcador</button><button class="small-btn" data-clear="${m.id}">Limpiar</button></div><div class="message" id="msg-${m.id}" role="alert"></div></div></article>`;
     }).join('');
+    document.querySelectorAll('.score-input').forEach(input=>input.addEventListener('input',()=>{scoreDraftDirty=true;}));
     document.querySelectorAll('[data-save]').forEach(b=>b.addEventListener('click',()=>saveMatch(Number(b.dataset.save))));
-    document.querySelectorAll('[data-clear]').forEach(b=>b.addEventListener('click',()=>{if(!isAdmin)return;delete scores[b.dataset.clear];save();renderAll();}));
+    document.querySelectorAll('[data-clear]').forEach(b=>b.addEventListener('click',()=>{if(!isAdmin)return;scoreDraftDirty=false;delete scores[b.dataset.clear];save();renderAll();}));
   }
   function saveMatch(id) {
     if(!isAdmin) return;
@@ -279,7 +282,7 @@ select { border:1px solid var(--border); background:var(--surface); color:var(--
     }
     const candidate={sets}; const state=inspect(candidate);
     if(!state.valid) { $(`#msg-${id}`).textContent=state.message; return; }
-    scores[id]=candidate; save(); renderAll();
+    scores[id]=candidate; scoreDraftDirty=false; save(); renderAll();
     const card=$(`#match-${id}`); if(card) card.scrollIntoView({behavior:'smooth',block:'nearest'});
   }
   function calcStats() {
