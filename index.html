@@ -181,9 +181,12 @@ select { border:1px solid var(--border); background:var(--surface); color:var(--
   async function save() {
     try { localStorage.setItem(storageKey, JSON.stringify(scores)); localStorage.setItem(fixtureKey, JSON.stringify(matches)); } catch(e) {}
     if (!isAdmin) return;
+    scoreDraftDirty = true;
     clearTimeout(saveTimer);
     saveTimer = setTimeout(async () => {
-      const { error } = await db.from('tournament_state').update({state:{matches,scores},updated_at:new Date().toISOString()}).eq('id',1);
+      const snapshot = { matches: JSON.parse(JSON.stringify(matches)), scores: JSON.parse(JSON.stringify(scores)) };
+      const { error } = await db.from('tournament_state').update({state:snapshot,updated_at:new Date().toISOString()}).eq('id',1);
+      if (!error) scoreDraftDirty = false;
       $('#admin-message').textContent = error ? 'No se pudo sincronizar: '+error.message : 'Resultados guardados y sincronizados.';
     },250);
   }
