@@ -100,7 +100,7 @@ select { border:1px solid var(--border); background:var(--surface); color:var(--
 .admin-panel { display:none; background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:16px; margin-bottom:16px; }
 .admin-panel.open { display:block; }
 .admin-panel input { width:100%; max-width:340px; border:1px solid var(--border); background:var(--surface); color:var(--text); padding:11px 12px; border-radius:9px; margin:6px 0 10px; }
-.readonly .editor, .readonly #randomize-btn, .readonly #reset-btn { display:none !important; }
+.readonly .editor, .readonly #randomize-btn, .readonly #reset-btn, .readonly #restart-tournament-btn { display:none !important; }
 @media (max-width:700px) { .hero { padding:24px 18px; } h1 {font-size:30px;} .stats {gap:8px;} .stat {padding:12px;} .stat .num {font-size:24px;} .match-grid, .rules-grid {grid-template-columns:1fr;} .section-head {align-items:start; flex-direction:column;} }
 @media (prefers-color-scheme: dark) { .status.done {background:#164b37;color:#b9f3d5;} }
 </style>
@@ -123,7 +123,7 @@ select { border:1px solid var(--border); background:var(--surface); color:var(--
     <div class="admin-panel" id="admin-panel"><strong>Acceso del organizador</strong><p class="sub">Iniciá sesión con el usuario administrador creado en Supabase.</p><label for="admin-email" class="sub">Correo electrónico</label><br><input type="email" id="admin-email" autocomplete="username" placeholder="Tu correo"><br><label for="admin-password" class="sub">Contraseña</label><br><input type="password" id="admin-password" autocomplete="current-password" placeholder="Tu contraseña"><div class="form-actions"><button class="primary-btn" id="admin-login">Ingresar</button><button class="small-btn" id="admin-logout">Cerrar sesión</button></div><div id="admin-message" class="message" role="status"></div><p class="footnote">Los permisos se verifican en Supabase. La contraseña no se guarda en el código de la página.</p></div>
     <nav class="tabs" aria-label="Secciones"><button class="tab active" data-tab="fixture">Fixture y marcador</button><button class="tab" data-tab="tabla">Estadísticas</button><button class="tab" data-tab="reglas">Reglamento</button></nav>
     <section id="fixture" class="panel active">
-      <div class="section-head"><div><h2>Fixture del torneo</h2><div class="sub">Cargá el resultado de cada partido. Los cambios se guardan en este navegador.</div></div><div class="controls"><button class="secondary-btn" id="randomize-btn">🎲 Sortear fixture</button><button class="secondary-btn" id="export-btn">Exportar resultados</button></div></div>
+      <div class="section-head"><div><h2>Fixture del torneo</h2><div class="sub">Cargá el resultado de cada partido. Los cambios se guardan en este navegador.</div></div><div class="controls"><button class="secondary-btn" id="randomize-btn">🎲 Sortear fixture</button><button class="danger-btn" id="restart-tournament-btn">↻ Reiniciar torneo</button><button class="secondary-btn" id="export-btn">Exportar resultados</button></div></div>
       <div id="fixture-message" class="footnote" role="status" aria-live="polite"></div>
       <div id="matches" class="match-grid"></div>
       <p class="footnote">Las parejas se repiten una segunda vez con las posiciones de drive y revés intercambiadas. En el set, el tie-break se registra como 7–6; sus puntos no se suman a los games.</p>
@@ -351,6 +351,7 @@ select { border:1px solid var(--border); background:var(--surface); color:var(--
   $('#admin-logout').addEventListener('click',async()=>{await db.auth.signOut();isAdmin=false;applyAccess();renderAll();$('#admin-message').textContent='Sesión cerrada.';});
   $('#randomize-btn').addEventListener('click',()=>{if(!fixtureLocked && confirm('¿Sortear el fixture de este torneo? Una vez sorteado, quedará bloqueado hasta que finalicen los 6 partidos.'))randomizeFixture();else if(fixtureLocked)randomizeFixture();});
   $('#reset-btn').addEventListener('click',()=>{if(!isAdmin)return;if(confirm('¿Borrar todos los marcadores guardados en este navegador?')){scores={};save();renderAll();}});
+  $('#restart-tournament-btn').addEventListener('click',()=>{if(!isAdmin)return;if(!confirm('¿Reiniciar el torneo completo? Se borrarán todos los resultados y se restaurará el fixture original.'))return;scores={};matches=defaultMatches.map(m=>({...m,teams:m.teams.map(t=>[...t]),sides:m.sides.map(s=>[...s])}));fixtureLocked=false;scoreDraftDirty=false;save();renderAll();$('#fixture-message').textContent='Torneo reiniciado. Ya podés sortear un nuevo fixture.';});
   $('#export-btn').addEventListener('click',()=>{
     const payload={torneo:'Torneo de Pádel entre amigos',jugadores:players,partidos:matches.map(m=>({partido:m.id,pareja1:m.teams[0].map(i=>players[i]),pareja2:m.teams[1].map(i=>players[i]),resultado:scores[m.id]||null})),estadisticas:calcStats()};
     const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='resultados-torneo-padel.json';a.click();URL.revokeObjectURL(url);
