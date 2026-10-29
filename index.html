@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Torneo de Pádel</title>
+<style>
+:root {
+  color-scheme: light dark;
+  --site-primary: #176b52;
+  --site-on-primary: #ffffff;
+  --site-secondary: #d9f1e5;
+  --site-on-secondary: #153d31;
+  --site-background: #f3f7f4;
+  --site-on-background: #17231e;
+  --site-font-body: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --site-font-heading: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --site-heading-scale: 1;
+  --site-spacing-scale: 1;
+  --site-radius-scale: 1;
+  --site-decoration-opacity: 1;
+  --surface: light-dark(#ffffff, #1c2622);
+  --surface-alt: light-dark(#eaf2ed, #26352e);
+  --text: light-dark(#17231e, #edf6f0);
+  --muted: light-dark(#62736a, #a6b7ad);
+  --border: light-dark(#d7e2da, #3a4a41);
+  --good: #16805d;
+  --bad: #c34f49;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--site-background); color: var(--site-on-background); font-family: var(--site-font-body); }
+button, input, select { font: inherit; }
+button { cursor: pointer; }
+#app { min-height: 100vh; width: 100%; background-color: var(--site-background); color: var(--site-on-background); border-radius: 0; }
+.hero { background: var(--site-primary); color: var(--site-on-primary); padding: calc(28px * var(--site-spacing-scale)) max(20px, calc((100vw - 1050px)/2)); position: relative; overflow: hidden; }
+.hero:after { content:""; position:absolute; width:230px; height:230px; border:32px solid rgba(255,255,255,.12); border-radius:50%; right:5%; top:-130px; pointer-events:none; opacity:var(--site-decoration-opacity); }
+.hero-inner { max-width:1050px; margin:auto; position:relative; z-index:1; }
+.eyebrow { font-size:12px; text-transform:uppercase; letter-spacing:.16em; font-weight:800; opacity:.82; }
+h1 { font-family:var(--site-font-heading); font-size:calc(34px * var(--site-heading-scale)); line-height:1.1; margin:8px 0; letter-spacing:-.04em; }
+.hero p { margin:0; opacity:.88; max-width:650px; }
+.pills { display:flex; flex-wrap:wrap; gap:8px; margin-top:18px; }
+.pill { background:rgba(255,255,255,.14); border:1px solid rgba(255,255,255,.25); border-radius:99px; padding:7px 11px; font-size:12px; font-weight:700; }
+main { max-width:1050px; margin:auto; padding:22px 18px 42px; }
+.stats { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-bottom:20px; }
+.stat { background:var(--surface); border:1px solid var(--border); border-radius:calc(16px * var(--site-radius-scale)); padding:16px; }
+.stat .num { font-size:28px; font-weight:850; letter-spacing:-.04em; color:var(--site-primary); }
+.stat .label { color:var(--muted); font-size:12px; margin-top:3px; }
+.tabs { display:flex; gap:6px; padding:5px; border-radius:14px; background:var(--surface-alt); margin:0 0 18px; overflow:auto; }
+.tab { border:0; border-radius:10px; padding:10px 14px; white-space:nowrap; color:var(--text); background:transparent; font-weight:750; }
+.tab.active { background:var(--surface); box-shadow:0 1px 4px rgba(0,0,0,.08); }
+.panel { display:none; }
+.panel.active { display:block; }
+.section-head { display:flex; gap:12px; align-items:end; justify-content:space-between; margin:0 0 14px; }
+h2 { font-size:calc(22px * var(--site-heading-scale)); margin:0; letter-spacing:-.03em; }
+.sub { color:var(--muted); font-size:13px; margin-top:4px; }
+.match-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
+.match { background:var(--surface); border:1px solid var(--border); border-radius:calc(16px * var(--site-radius-scale)); padding:16px; min-width:0; }
+.match-top { display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:13px; }
+.match-num { font-size:12px; font-weight:850; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); }
+.status { font-size:11px; font-weight:800; padding:5px 8px; border-radius:99px; background:var(--surface-alt); color:var(--muted); }
+.status.done { background:#d9f5e8; color:#126445; }
+.teams { display:grid; grid-template-columns:1fr 34px 1fr; align-items:center; gap:8px; }
+.team { background:var(--surface-alt); border-radius:12px; padding:12px 9px; min-height:90px; }
+.team .names { font-weight:850; line-height:1.35; }
+.team .positions { font-size:11px; color:var(--muted); margin-top:7px; }
+.vs { text-align:center; font-size:11px; color:var(--muted); font-weight:900; }
+.score-summary { margin-top:12px; display:flex; justify-content:space-between; align-items:center; gap:10px; padding-top:11px; border-top:1px solid var(--border); font-size:13px; }
+.score-summary strong { font-size:17px; letter-spacing:.04em; }
+.small-btn, .primary-btn, .secondary-btn, .danger-btn { border-radius:10px; padding:10px 13px; font-weight:800; border:1px solid var(--border); }
+.small-btn, .secondary-btn { background:var(--surface); color:var(--text); }
+.primary-btn { background:var(--site-primary); color:var(--site-on-primary); border-color:var(--site-primary); }
+.danger-btn { background:transparent; color:var(--bad); border-color:var(--bad); }
+.editor { border-top:1px solid var(--border); margin-top:14px; padding-top:14px; }
+.set-row { display:grid; grid-template-columns:1fr 58px 18px 58px; gap:8px; align-items:center; margin:8px 0; }
+.set-row label { color:var(--muted); font-size:13px; font-weight:750; }
+.score-input { width:100%; min-width:0; border:1px solid var(--border); background:var(--surface); color:var(--text); padding:10px 6px; border-radius:9px; text-align:center; font-weight:800; }
+.form-actions { display:flex; gap:8px; margin-top:12px; flex-wrap:wrap; }
+.message { margin-top:10px; color:var(--bad); font-size:12px; font-weight:700; }
+.table-wrap { overflow:auto; border:1px solid var(--border); border-radius:14px; background:var(--surface); }
+table { border-collapse:collapse; width:100%; min-width:830px; font-size:13px; }
+th, td { padding:12px 11px; border-bottom:1px solid var(--border); text-align:right; white-space:nowrap; }
+th { color:var(--muted); font-size:11px; text-transform:uppercase; letter-spacing:.04em; background:var(--surface-alt); }
+th:first-child, td:first-child { text-align:left; position:sticky; left:0; background:var(--surface); }
+th:first-child { background:var(--surface-alt); }
+tr:last-child td { border-bottom:0; }
+.rank { display:inline-grid; place-items:center; width:24px; height:24px; background:var(--surface-alt); border-radius:7px; font-weight:900; margin-right:8px; }
+.positive { color:var(--good); font-weight:850; }
+.negative { color:var(--bad); font-weight:850; }
+.controls { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+select { border:1px solid var(--border); background:var(--surface); color:var(--text); padding:10px 12px; border-radius:10px; }
+.rules-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
+.rule { background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:16px; }
+.rule strong { display:block; margin-bottom:6px; }
+.rule p { color:var(--muted); font-size:13px; margin:0; line-height:1.55; }
+.footnote { font-size:12px; color:var(--muted); margin-top:14px; line-height:1.5; }
+.empty { color:var(--muted); background:var(--surface); border:1px dashed var(--border); border-radius:14px; padding:18px; font-size:13px; }
+.access-box { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:12px; padding:14px 16px; margin-bottom:18px; border:1px solid var(--border); border-radius:14px; background:var(--surface); }
+.access-box p { margin:4px 0 0; color:var(--muted); font-size:12px; }
+.lock-pill { display:inline-flex; align-items:center; gap:6px; font-size:12px; font-weight:800; border-radius:99px; padding:7px 10px; background:var(--surface-alt); }
+.admin-panel { display:none; background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:16px; margin-bottom:16px; }
+.admin-panel.open { display:block; }
+.admin-panel input { width:100%; max-width:340px; border:1px solid var(--border); background:var(--surface); color:var(--text); padding:11px 12px; border-radius:9px; margin:6px 0 10px; }
+.readonly .editor, .readonly #randomize-btn, .readonly #reset-btn { display:none !important; }
+@media (max-width:700px) { .hero { padding:24px 18px; } h1 {font-size:30px;} .stats {gap:8px;} .stat {padding:12px;} .stat .num {font-size:24px;} .match-grid, .rules-grid {grid-template-columns:1fr;} .section-head {align-items:start; flex-direction:column;} }
+@media (prefers-color-scheme: dark) { .status.done {background:#164b37;color:#b9f3d5;} }
+</style>
+</head>
+<body>
+<div id="app">
+  <header class="hero"><div class="hero-inner">
+    <div class="eyebrow">Club de amigos · Temporada 2026</div>
+    <h1>Torneo de Pádel</h1>
+    <p>Cuatro jugadores, seis partidos y estadísticas individuales actualizadas automáticamente.</p>
+    <div class="pills"><span class="pill">Martín</span><span class="pill">Marcio</span><span class="pill">Iván</span><span class="pill">Lucas</span><span class="pill">Mejor de 3 sets</span></div>
+  </div></header>
+  <main>
+    <div class="stats">
+      <div class="stat"><div class="num" id="played-count">0/6</div><div class="label">Partidos finalizados</div></div>
+      <div class="stat"><div class="num" id="sets-count">0</div><div class="label">Sets registrados</div></div>
+      <div class="stat"><div class="num" id="leader-count">—</div><div class="label">Líder provisional · victorias</div></div>
+    </div>
+    <div class="access-box"><div><strong>Acceso al torneo</strong><p id="access-message">Modo consulta: solo el administrador puede cambiar fixture y resultados.</p></div><div class="controls"><span class="lock-pill" id="access-status">🔒 Solo lectura</span><button class="secondary-btn" id="admin-toggle">Ingresar como administrador</button></div></div>
+    <div class="admin-panel" id="admin-panel"><strong>Acceso del organizador</strong><p class="sub">Iniciá sesión con el usuario administrador creado en Supabase.</p><label for="admin-email" class="sub">Correo electrónico</label><br><input type="email" id="admin-email" autocomplete="username" placeholder="Tu correo"><br><label for="admin-password" class="sub">Contraseña</label><br><input type="password" id="admin-password" autocomplete="current-password" placeholder="Tu contraseña"><div class="form-actions"><button class="primary-btn" id="admin-login">Ingresar</button><button class="small-btn" id="admin-logout">Cerrar sesión</button></div><div id="admin-message" class="message" role="status"></div><p class="footnote">Los permisos se verifican en Supabase. La contraseña no se guarda en el código de la página.</p></div>
+    <nav class="tabs" aria-label="Secciones"><button class="tab active" data-tab="fixture">Fixture y marcador</button><button class="tab" data-tab="tabla">Estadísticas</button><button class="tab" data-tab="reglas">Reglamento</button></nav>
+    <section id="fixture" class="panel active">
+      <div class="section-head"><div><h2>Fixture del torneo</h2><div class="sub">Cargá el resultado de cada partido. Los cambios se guardan en este navegador.</div></div><div class="controls"><button class="secondary-btn" id="randomize-btn">🎲 Sortear fixture</button><button class="secondary-btn" id="export-btn">Exportar resultados</button></div></div>
+      <div id="fixture-message" class="footnote" role="status" aria-live="polite"></div>
+      <div id="matches" class="match-grid"></div>
+      <p class="footnote">Las parejas se repiten una segunda vez con las posiciones de drive y revés intercambiadas. En el set, el tie-break se registra como 7–6; sus puntos no se suman a los games.</p>
+    </section>
+    <section id="tabla" class="panel">
+      <div class="section-head"><div><h2>Estadísticas individuales</h2><div class="sub">Las cifras se calculan desde los resultados guardados.</div></div><div class="controls"><label for="sort-by" class="sub">Ordenar por</label><select id="sort-by"><option value="wins">Partidos ganados</option><option value="setDiff">Diferencia de sets</option><option value="gameDiff">Diferencia de games</option><option value="setsFor">Sets +</option><option value="gamesFor">Games +</option></select></div></div>
+      <div class="table-wrap"><table><thead><tr><th>Jugador</th><th>Partidos jugados</th><th>Ganados</th><th>Perdidos</th><th>Sets +</th><th>Sets −</th><th>Dif. sets</th><th>Games +</th><th>Games −</th><th>Dif. games</th></tr></thead><tbody id="standings"></tbody></table></div>
+      <p class="footnote">La clasificación se ordena por el criterio elegido y después por los siguientes criterios de desempate: diferencia de sets, diferencia de games y partidos ganados. Si hay igualdad total, los jugadores comparten posición.</p>
+    </section>
+    <section id="reglas" class="panel">
+      <div class="section-head"><div><h2>Reglas configuradas</h2><div class="sub">Parámetros del torneo</div></div></div>
+      <div class="rules-grid">
+        <div class="rule"><strong>01 · Cuatro jugadores</strong><p>Martín, Marcio, Iván y Lucas. Las estadísticas son individuales, aunque cada partido se juega en dobles.</p></div>
+        <div class="rule"><strong>02 · Seis partidos</strong><p>Tres combinaciones de parejas, cada una repetida una vez con los jugadores intercambiando drive y revés.</p></div>
+        <div class="rule"><strong>03 · Mejor de tres sets</strong><p>El partido termina cuando una pareja gana dos sets. No se deben cargar sets posteriores al ganador.</p></div>
+        <div class="rule"><strong>04 · Sets a seis games</strong><p>Se requiere una diferencia de dos games. A 6–6 se juega tie-break; el resultado del set se registra como 7–6.</p></div>
+        <div class="rule"><strong>05 · Estadísticas</strong><p>Partidos jugados, ganados y perdidos; sets a favor y en contra, diferencia de sets; games a favor y en contra, diferencia de games.</p></div>
+        <div class="rule"><strong>06 · Guardado local</strong><p>Los resultados se guardan automáticamente en este navegador. Para compartirlos entre celulares hará falta conectar una base de datos o publicar una versión con sincronización.</p></div>
+      </div>
+      <div class="form-actions"><button class="danger-btn" id="reset-btn">Borrar todos los resultados</button></div>
+      <p class="footnote">Borrar resultados elimina los marcadores guardados en este navegador. Esta acción pide confirmación.</p>
+    </section>
+  </main>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+(() => {
+  const players = ['Martín','Marcio','Iván','Lucas'];
+  // Each pair appears twice; the second occurrence swaps both players' court sides.
+  const defaultMatches = [
+    {id:1, teams:[[0,1],[2,3]], sides:[['DRIVE','REVÉS'],['DRIVE','REVÉS']]},
+    {id:2, teams:[[0,1],[2,3]], sides:[['REVÉS','DRIVE'],['REVÉS','DRIVE']]},
+    {id:3, teams:[[0,2],[1,3]], sides:[['DRIVE','REVÉS'],['DRIVE','REVÉS']]},
+    {id:4, teams:[[0,2],[1,3]], sides:[['REVÉS','DRIVE'],['REVÉS','DRIVE']]},
+    {id:5, teams:[[0,3],[1,2]], sides:[['DRIVE','REVÉS'],['DRIVE','REVÉS']]},
+    {id:6, teams:[[0,3],[1,2]], sides:[['REVÉS','DRIVE'],['REVÉS','DRIVE']]}
+  ];
+  let matches = defaultMatches.map(m=>({...m,teams:m.teams.map(t=>[...t]),sides:m.sides.map(s=>[...s])}));
+  const fixtureKey = 'torneo-padel-fixture-v1';
+  const storageKey = 'torneo-padel-amigos-v1';
+  const supabaseUrl = 'https://azmudfhslumnynhqbooh.supabase.co';
+  const supabaseKey = 'sb_publishable_YDsGEqnTQ44ntd7kzDpGIg_v63hZmDZ';
+  const db = window.supabase.createClient(supabaseUrl, supabaseKey);
+  let isAdmin = false;
+  let scores = {};
+  try { scores = JSON.parse(localStorage.getItem(storageKey) || '{}') || {}; } catch(e) { scores = {}; }
+  try {
+    const savedFixture = JSON.parse(localStorage.getItem(fixtureKey) || 'null');
+    if (Array.isArray(savedFixture) && savedFixture.length===6) matches=savedFixture;
+  } catch(e) {}
+  const $ = s => document.querySelector(s);
+  const safe = n => Number.isInteger(Number(n)) && Number(n) >= 0 ? Number(n) : 0;
+  let saveTimer = null;
+  async function save() {
+    try { localStorage.setItem(storageKey, JSON.stringify(scores)); localStorage.setItem(fixtureKey, JSON.stringify(matches)); } catch(e) {}
+    if (!isAdmin) return;
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(async () => {
+      const { error } = await db.from('tournament_state').update({state:{matches,scores},updated_at:new Date().toISOString()}).eq('id',1);
+      $('#admin-message').textContent = error ? 'No se pudo sincronizar: '+error.message : 'Resultados guardados y sincronizados.';
+    },250);
+  }
+  async function loadCloudState() {
+    const {data,error}=await db.from('tournament_state').select('state,updated_at').eq('id',1).single();
+    if(error) throw error;
+    if(data.state && Array.isArray(data.state.matches) && data.state.matches.length===6) matches=data.state.matches;
+    scores=data.state && data.state.scores && typeof data.state.scores==='object' ? data.state.scores : {};
+    try { localStorage.setItem(storageKey,JSON.stringify(scores)); localStorage.setItem(fixtureKey,JSON.stringify(matches)); } catch(e) {}
+    renderAll();
+    $('#fixture-message').textContent='Resultados sincronizados · '+new Date(data.updated_at).toLocaleString('es-AR');
+  }
+  function applyAccess() {
+    document.body.classList.toggle('readonly',!isAdmin);
+    $('#access-status').textContent=isAdmin?'🔓 Administrador':'🔒 Solo lectura';
+    $('#admin-toggle').textContent=isAdmin?'Administración abierta':'Ingresar como administrador';
+    $('#access-message').textContent=isAdmin?'Sesión autorizada: podés modificar resultados y fixture.':'Modo consulta: solo el administrador puede cambiar fixture y resultados.';
+    $('#admin-panel').classList.toggle('open',!isAdmin);
+  }
+  function shuffle(array) {
+    const out=[...array];
+    for(let i=out.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[out[i],out[j]]=[out[j],out[i]];}
+    return out;
+  }
+  function randomizeFixture() {
+    if(!isAdmin) { $('#fixture-message').textContent='Ingresá como administrador para sortear el fixture.'; return; }
+    if(Object.keys(scores).some(id=>inspect(scores[id]).valid)) {
+      $('#fixture-message').textContent='Ya hay resultados cargados. Borrá los marcadores antes de sortear otro fixture.';
+      return;
+    }
+    const pairs=[[[0,1],[2,3]],[[0,2],[1,3]],[[0,3],[1,2]]];
+    const shuffledPairs=shuffle(pairs);
+    matches=[];
+    shuffledPairs.forEach((pairing,index)=>{
+      const teamOrder=Math.random()<0.5?[0,1]:[1,0];
+      const firstSides=Math.random()<0.5?['DRIVE','REVÉS']:['REVÉS','DRIVE'];
+      const teams=teamOrder.map(t=>[...pairing[t]]);
+      const sides=teamOrder.map(()=>[...firstSides]);
+      matches.push({id:index*2+1,teams,sides});
+      matches.push({id:index*2+2,teams:teams.map(t=>[...t]),sides:sides.map(s=>s[0]==='DRIVE'?['REVÉS','DRIVE']:['DRIVE','REVÉS'])});
+    });
+    save();
+    $('#fixture-message').textContent='¡Fixture sorteado! Cada pareja aparece dos veces y cambia drive/revés en la revancha.';
+    renderAll();
+  }
+  function validSet(a,b) {
+    if (!Number.isInteger(a) || !Number.isInteger(b) || a < 0 || b < 0 || a === b) return false;
+    const hi=Math.max(a,b), lo=Math.min(a,b);
+    return (hi===6 && lo<=4) || (hi===7 && (lo===5 || lo===6));
+  }
+  function inspect(score) {
+    if (!score || !Array.isArray(score.sets)) return {valid:false, message:'Cargá al menos dos sets válidos.'};
+    const sets=score.sets;
+    if (sets.length < 2 || sets.length > 3) return {valid:false,message:'El partido debe tener dos o tres sets.'};
+    let w0=0,w1=0;
+    for (let i=0;i<sets.length;i++) {
+      const [a,b]=sets[i];
+      if (!validSet(a,b)) return {valid:false,message:`El set ${i+1} no es válido. Usá 6–0 a 6–4, 7–5 o 7–6.`};
+      if (a>b) w0++; else w1++;
+      if (w0===2 || w1===2) {
+        if (i !== sets.length-1) return {valid:false,message:'No puede haber sets después de que una pareja gana dos sets.'};
+      }
+    }
+    if (w0!==2 && w1!==2) return {valid:false,message:'El partido debe terminar cuando una pareja consigue dos sets.'};
+    return {valid:true,winner:w0===2?0:1,sets};
+  }
+  function esc(s) { return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+  function teamNames(match, ti) {
+    const team=match.teams[ti]; const sides=match.sides[ti];
+    return `<div class="names">${team.map(i=>esc(players[i])).join(' + ')}</div><div class="positions">${team.map((i,j)=>`${esc(players[i])}: ${sides[j]}`).join('<br>')}</div>`;
+  }
+  function scoreText(score) { return score.sets.map(s=>s.join('–')).join(' · '); }
+  function renderMatches() {
+    $('#matches').innerHTML = matches.map(m => {
+      const score=scores[m.id]; const state=score?inspect(score):{valid:false};
+      const result=state.valid?`<div class="score-summary"><span>Resultado</span><strong>${scoreText(score)}</strong></div>`:'';
+      const sets=score?.sets || [[ '', '' ],[ '', '' ],[ '', '' ]];
+      const rows=[0,1,2].map(i=>`<div class="set-row"><label for="m${m.id}s${i}a">Set ${i+1}${i===2?' · si hace falta':''}</label><input class="score-input" id="m${m.id}s${i}a" type="number" min="0" max="7" inputmode="numeric" value="${sets[i]?.[0] ?? ''}" aria-label="Set ${i+1}, games pareja 1"><span>–</span><input class="score-input" id="m${m.id}s${i}b" type="number" min="0" max="7" inputmode="numeric" value="${sets[i]?.[1] ?? ''}" aria-label="Set ${i+1}, games pareja 2"></div>`).join('');
+      return `<article class="match" id="match-${m.id}"><div class="match-top"><span class="match-num">Partido ${m.id}</span><span class="status ${state.valid?'done':''}">${state.valid?'Finalizado':'Pendiente'}</span></div><div class="teams"><div class="team">${teamNames(m,0)}</div><div class="vs">VS</div><div class="team">${teamNames(m,1)}</div></div>${result}<div class="editor"><div class="sub">Games por set · el tie-break se anota 7–6</div>${rows}<div class="form-actions"><button class="primary-btn" data-save="${m.id}">Guardar marcador</button><button class="small-btn" data-clear="${m.id}">Limpiar</button></div><div class="message" id="msg-${m.id}" role="alert"></div></div></article>`;
+    }).join('');
+    document.querySelectorAll('[data-save]').forEach(b=>b.addEventListener('click',()=>saveMatch(Number(b.dataset.save))));
+    document.querySelectorAll('[data-clear]').forEach(b=>b.addEventListener('click',()=>{if(!isAdmin)return;delete scores[b.dataset.clear];save();renderAll();}));
+  }
+  function saveMatch(id) {
+    if(!isAdmin) return;
+    const sets=[];
+    for(let i=0;i<3;i++) {
+      const a=$(`#m${id}s${i}a`).value.trim(), b=$(`#m${id}s${i}b`).value.trim();
+      if(a==='' && b==='') continue;
+      if(a==='' || b==='') { $(`#msg-${id}`).textContent=`Completá los dos marcadores del set ${i+1}.`; return; }
+      const na=Number(a), nb=Number(b);
+      if(!Number.isInteger(na)||!Number.isInteger(nb)||na>7||nb>7) { $(`#msg-${id}`).textContent='Ingresá games enteros entre 0 y 7.'; return; }
+      sets.push([na,nb]);
+    }
+    const candidate={sets}; const state=inspect(candidate);
+    if(!state.valid) { $(`#msg-${id}`).textContent=state.message; return; }
+    scores[id]=candidate; save(); renderAll();
+    const card=$(`#match-${id}`); if(card) card.scrollIntoView({behavior:'smooth',block:'nearest'});
+  }
+  function calcStats() {
+    const out=Object.fromEntries(players.map((p,i)=>[i,{player:p,played:0,wins:0,losses:0,setsFor:0,setsAgainst:0,gamesFor:0,gamesAgainst:0,setDiff:0,gameDiff:0}]));
+    matches.forEach(m=>{
+      const sc=scores[m.id]; const v=inspect(sc); if(!v.valid) return;
+      const setWins=[0,0], gameTotals=[0,0];
+      sc.sets.forEach(([a,b])=>{if(a>b)setWins[0]++;else setWins[1]++;gameTotals[0]+=a;gameTotals[1]+=b;});
+      m.teams.forEach((team,ti)=>team.forEach(pi=>{
+        const s=out[pi]; s.played++; if(ti===v.winner)s.wins++;else s.losses++;
+        s.setsFor+=setWins[ti]; s.setsAgainst+=setWins[1-ti];
+        s.gamesFor+=gameTotals[ti]; s.gamesAgainst+=gameTotals[1-ti];
+      }));
+    });
+    Object.values(out).forEach(s=>{s.setDiff=s.setsFor-s.setsAgainst;s.gameDiff=s.gamesFor-s.gamesAgainst;});
+    return Object.values(out);
+  }
+  function renderStandings() {
+    const key=$('#sort-by').value; const tie=['setDiff','gameDiff','wins','setsFor','gamesFor'];
+    const keys=[key,...tie.filter(k=>k!==key)];
+    const rows=calcStats().sort((a,b)=>{for(const k of keys){if(a[k]!==b[k])return b[k]-a[k];}return a.player.localeCompare(b.player,'es');});
+    $('#standings').innerHTML=rows.map((s,i)=>`<tr><td><span class="rank">${i+1}</span><strong>${esc(s.player)}</strong></td><td>${s.played}</td><td>${s.wins}</td><td>${s.losses}</td><td>${s.setsFor}</td><td>${s.setsAgainst}</td><td class="${s.setDiff>0?'positive':s.setDiff<0?'negative':''}">${s.setDiff>0?'+':''}${s.setDiff}</td><td>${s.gamesFor}</td><td>${s.gamesAgainst}</td><td class="${s.gameDiff>0?'positive':s.gameDiff<0?'negative':''}">${s.gameDiff>0?'+':''}${s.gameDiff}</td></tr>`).join('');
+  }
+  function renderStats() {
+    const complete=matches.filter(m=>inspect(scores[m.id]).valid).length;
+    const setCount=matches.reduce((sum,m)=>sum+(inspect(scores[m.id]).valid?scores[m.id].sets.length:0),0);
+    const stats=calcStats(); const maxWins=Math.max(...stats.map(s=>s.wins));
+    $('#played-count').textContent=`${complete}/6`; $('#sets-count').textContent=String(setCount);
+    $('#leader-count').textContent=maxWins===0?'—':stats.filter(s=>s.wins===maxWins).map(s=>s.player).join(' / ');
+  }
+  function renderAll(){renderMatches();renderStandings();renderStats();}
+  document.querySelectorAll('[data-tab]').forEach(b=>b.addEventListener('click',()=>{
+    document.querySelectorAll('[data-tab]').forEach(x=>x.classList.toggle('active',x===b));
+    document.querySelectorAll('.panel').forEach(x=>x.classList.toggle('active',x.id===b.dataset.tab));
+  }));
+  $('#sort-by').addEventListener('change',renderStandings);
+  $('#admin-toggle').addEventListener('click',()=>$('#admin-panel').classList.toggle('open'));
+  $('#admin-login').addEventListener('click',async()=>{
+    const email=$('#admin-email').value.trim(),password=$('#admin-password').value;
+    if(!email||!password){$('#admin-message').textContent='Ingresá correo y contraseña.';return;}
+    const {error}=await db.auth.signInWithPassword({email,password});
+    if(error){$('#admin-message').textContent='No se pudo ingresar: '+error.message;return;}
+    await checkAdmin();
+  });
+  $('#admin-logout').addEventListener('click',async()=>{await db.auth.signOut();isAdmin=false;applyAccess();renderAll();$('#admin-message').textContent='Sesión cerrada.';});
+  $('#randomize-btn').addEventListener('click',()=>{if(confirm('¿Sortear un nuevo fixture aleatorio? Esta acción solo está disponible antes de cargar resultados.'))randomizeFixture();});
+  $('#reset-btn').addEventListener('click',()=>{if(!isAdmin)return;if(confirm('¿Borrar todos los marcadores guardados en este navegador?')){scores={};save();renderAll();}});
+  $('#export-btn').addEventListener('click',()=>{
+    const payload={torneo:'Torneo de Pádel entre amigos',jugadores:players,partidos:matches.map(m=>({partido:m.id,pareja1:m.teams[0].map(i=>players[i]),pareja2:m.teams[1].map(i=>players[i]),resultado:scores[m.id]||null})),estadisticas:calcStats()};
+    const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='resultados-torneo-padel.json';a.click();URL.revokeObjectURL(url);
+  });
+  async function checkAdmin(){
+    const {data:userResult}=await db.auth.getUser();
+    if(!userResult.user){isAdmin=false;applyAccess();renderAll();return;}
+    const {data,error}=await db.from('tournament_admins').select('user_id').eq('user_id',userResult.user.id).maybeSingle();
+    isAdmin=!!data&&!error;applyAccess();renderAll();
+    $('#admin-message').textContent=isAdmin?'Administrador autorizado.':'Esta cuenta no tiene permisos de administrador.';
+  }
+  db.auth.onAuthStateChange(async(_event,session)=>{if(session) await checkAdmin();else{isAdmin=false;applyAccess();renderAll();}});
+  applyAccess();renderAll();
+  db.auth.getSession().then(async({data})=>{if(data.session)await checkAdmin();try{await loadCloudState();}catch(e){$('#fixture-message').textContent='No se pudo cargar la base compartida. Verificá que hayas ejecutado el SQL de configuración.';}});
+  setInterval(()=>{if(!document.hidden)loadCloudState().catch(()=>{});},8000);
+})();
+</script>
+</body>
+</html>
